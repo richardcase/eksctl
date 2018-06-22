@@ -11,7 +11,7 @@ import (
 
 	"github.com/weaveworks/eksctl/pkg/eks"
 	"github.com/weaveworks/eksctl/pkg/utils"
-	"github.com/weaveworks/eksctl/pkg/utils/kubeconf"
+	"github.com/weaveworks/eksctl/pkg/utils/kubeconfig"
 )
 
 func createCmd() *cobra.Command {
@@ -35,8 +35,6 @@ const (
 	DEFAULT_NODE_COUNT     = 2
 	DEFAULT_NODE_TYPE      = "m5.large"
 	DEFAULT_SSH_PUBLIC_KEY = "~/.ssh/id_rsa.pub"
-
-	DEFAULT_KUBECONFIG_PATH = "kubeconfig"
 )
 
 var (
@@ -78,9 +76,9 @@ func createClusterCmd() *cobra.Command {
 	fs.StringVar(&cfg.SSHPublicKeyPath, "ssh-public-key", DEFAULT_SSH_PUBLIC_KEY, "SSH public key to use for nodes (import from local path, or use existing EC2 key pair)")
 
 	fs.BoolVar(&writeKubeconfig, "write-kubeconfig", true, "toggle writing of kubeconfig")
-	fs.BoolVar(&autoKubeconfigPath, "auto-kubeconfig", false, fmt.Sprintf("save kubconfig file by cluster name, e.g. %q", utils.ConfigPath(exampleClusterName)))
-	fs.StringVar(&kubeconfigPath, "kubeconfig", DEFAULT_KUBECONFIG_PATH, "path to write kubeconfig (incompatible with --auto-kubeconfig)")
-	fs.BoolVar(&setContext, "set-context", true, "If true then current-context will be set in kubeconfig. If a context is already set then it will be overwritten.")
+	fs.BoolVar(&autoKubeconfigPath, "auto-kubeconfig", true, fmt.Sprintf("save kubconfig file by cluster name, e.g. %q", kubeconfig.AutoPath(exampleClusterName)))
+	fs.StringVar(&kubeconfigPath, "kubeconfig", kubeconfig.DefaultPath, "path to write kubeconfig (incompatible with --auto-kubeconfig)")
+	fs.BoolVar(&setContext, "set-kubeconfig-context", true, "if true then current-context will be set in kubeconfig; if a context is already set then it will be overwritten")
 
 	return cmd
 }
@@ -97,14 +95,10 @@ func doCreateCluster(cfg *eks.ClusterConfig) error {
 	}
 
 	if autoKubeconfigPath {
-		if kubeconfigPath != DEFAULT_KUBECONFIG_PATH {
+		if kubeconfigPath != kubeconfig.DefaultPath {
 			return fmt.Errorf("--kubeconfig and --auto-kubeconfig cannot be used at the same time")
 		}
-		kubeconfigPath = utils.ConfigPath(cfg.ClusterName)
-	}
-	if kubeconfigPath == DEFAULT_KUBECONFIG_PATH {
-		kubeconfigPath = kubeconf.GetRecommendedPath()
-		logger.Debug("no kubeconfig specified so using recommended client path: %s", kubeconfigPath)
+		kubeconfigPath = kubeconfig.AutoPath(cfg.ClusterName)
 	}
 
 	if cfg.SSHPublicKeyPath == "" {
@@ -145,7 +139,7 @@ func doCreateCluster(cfg *eks.ClusterConfig) error {
 
 		if writeKubeconfig {
 			config := clientConfigBase.WithExecHeptioAuthenticator()
-			if err := kubeconf.WriteToFile(kubeconfigPath, config.Client, setContext); err != nil {
+			if err := kubeconfig.WriteToFile(kubeconfigPath, config.Client, setContext); err != nil {
 				return errors.Wrap(err, "writing kubeconfig")
 			}
 

@@ -13,7 +13,7 @@ import (
 	"github.com/kubicorn/kubicorn/pkg/logger"
 	"github.com/weaveworks/eksctl/pkg/eks"
 	"github.com/weaveworks/eksctl/pkg/utils"
-	"github.com/weaveworks/eksctl/pkg/utils/kubeconf"
+	"github.com/weaveworks/eksctl/pkg/utils/kubeconfig"
 )
 
 var (
@@ -102,7 +102,7 @@ func writeKubeconfigCmd() *cobra.Command {
 	fs.StringVarP(&cfg.Profile, "profile", "p", "", "AWS profile to use. If provided, this overrides the AWS_PROFILE environment variable")
 
 	fs.StringVar(&utilsKubeconfigOutputPath, "kubeconfig", "", "path to write kubeconfig")
-	fs.BoolVar(&utilsSetContext, "set-context", true, "If true then current-context will be set in kubeconfig. If a context is already set then it will be overwritten.")
+	fs.BoolVar(&utilsSetContext, "set-kubeconfig-context", true, "if true then current-context will be set in kubeconfig; if a context is already set then it will be overwritten")
 
 	return cmd
 }
@@ -115,7 +115,7 @@ func doWriteKubeconfigCmd(cfg *eks.ClusterConfig) error {
 	}
 
 	if utilsKubeconfigOutputPath == "" {
-		utilsKubeconfigOutputPath = utils.ConfigPath(cfg.ClusterName)
+		utilsKubeconfigOutputPath = kubeconfig.AutoPath(cfg.ClusterName)
 	}
 
 	if err := ctl.CheckAuth(); err != nil {
@@ -139,7 +139,7 @@ func doWriteKubeconfigCmd(cfg *eks.ClusterConfig) error {
 	}
 
 	config := clientConfigBase.WithExecHeptioAuthenticator()
-	if err := kubeconf.WriteToFile(utilsKubeconfigOutputPath, config.Client, setContext); err != nil {
+	if err := kubeconfig.WriteToFile(utilsKubeconfigOutputPath, config.Client, setContext); err != nil {
 		return errors.Wrap(err, "writing kubeconfig")
 	}
 
